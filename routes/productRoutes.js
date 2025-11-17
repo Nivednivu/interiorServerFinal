@@ -164,6 +164,7 @@ router.delete("/products/:id", (req, res) => {
 });
 
 // DELETE PRODUCT
+// DELETE THIS DUPLICATE ROUTE (the one using product_id):
 router.delete("/products/:id", (req, res) => {
   const productId = req.params.id;
   

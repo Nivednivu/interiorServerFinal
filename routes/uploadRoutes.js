@@ -46,7 +46,7 @@ const upload = multer({
   }
 });
 
-// Upload endpoint
+// Upload endpoint - FIXED FOR RENDER
 router.post("/upload", upload.single("file"), (req, res) => {
   try {
     console.log("📁 Upload request received");
@@ -62,8 +62,13 @@ router.post("/upload", upload.single("file"), (req, res) => {
     console.log("✅ File uploaded:", req.file.filename);
     console.log("📁 File saved at:", req.file.path);
 
-    const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+    // FIX: Use dynamic URL for Render production
+    const protocol = req.protocol;
+    const host = req.get('host');
+    const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
     
+    console.log("🌐 Generated file URL:", fileUrl);
+
     res.json({
       success: true,
       message: "File uploaded successfully",
@@ -93,7 +98,7 @@ router.use((error, req, res, next) => {
         success: false,
         error: "Unexpected file field"
       });
-    }
+    } 
   }
   
   console.error("❌ Upload middleware error:", error);

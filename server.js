@@ -18,44 +18,42 @@ if (!fs.existsSync(uploadsDir)) {
   console.log("✅ Created uploads directory:", uploadsDir);
 }
 
-// FIXED MIDDLEWARE ORDER - This is the main issue!
-app.use(express.json({ limit: '50mb' })); // MUST come first
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Middleware
 app.use(cors());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Logging middleware to debug requests
+// Serve static files from uploads directory - FIXED FOR RENDER
+app.use("/uploads", express.static(uploadsDir));
+
+// Logging middleware
 app.use((req, res, next) => {
   console.log(`📨 ${req.method} ${req.path}`);
   console.log('📋 Content-Type:', req.headers['content-type']);
-  console.log('📦 Body:', req.body);
   next();
 });
-
-// Serve static files from uploads directory
-app.use("/uploads", express.static(uploadsDir));
 
 // Routes
 app.use("/api", productRoutes);
 app.use("/api", uploadRoutes);
 
-// Test route to check if JSON parsing works
-app.post("/api/test-json", (req, res) => {
-  console.log("✅ JSON test - Request body:", req.body);
-  res.json({ 
-    success: true, 
-    message: "JSON parsing is working!",
-    receivedData: req.body 
-  });
-});
-
-// Test route
+// Test routes
 app.get("/api/test", (req, res) => {
   res.json({ message: "Server is working!" });
 });
 
+app.get("/api/test-uploads", (req, res) => {
+  res.json({ 
+    message: "Uploads test",
+    uploadsDir: uploadsDir,
+    exists: fs.existsSync(uploadsDir),
+    files: fs.readdirSync(uploadsDir)
+  });
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📁 Uploads directory: ${uploadsDir}`);
-  console.log(`📁 Uploads URL: http://localhost:${PORT}/uploads/`);
+  console.log(`📁 Uploads URL: /uploads/`);
 });
