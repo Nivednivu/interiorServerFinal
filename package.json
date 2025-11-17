@@ -9,7 +9,11 @@
     "dev": "nodemon server.js",
     "render-start": "node server.js"
   },
-  "keywords": ["interior", "design", "api"],
+  "keywords": [
+    "interior",
+    "design",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {

@@ -33,48 +33,76 @@ router.get("/products/:id", (req, res) => {
   });
 });
 
-// CREATE NEW PRODUCT
+// CREATE NEW PRODUCT - SAFER VERSION
+// CREATE NEW PRODUCT - USING AUTO-INCREMENT ID ONLY
 router.post("/products", (req, res) => {
-  const { productId, product_name, price_new, brand, category, description, image_url, video_url } = req.body;
+  console.log("📨 Received POST /products request");
+  console.log("📦 Request body:", req.body);
   
+  if (!req.body || Object.keys(req.body).length === 0) {
+    return res.status(400).json({ 
+      success: false, 
+      error: "Request body is missing." 
+    });
+  }
+
+  const { 
+    product_name, 
+    price_new, 
+    brand, 
+    category, 
+    description = '', 
+    image_url = '', 
+    video_url = '' 
+  } = req.body;
+  
+  // Validate required fields
   if (!product_name || !price_new || !brand || !category) {
     return res.status(400).json({ 
       success: false, 
-      error: "Product name, price, brand, and category are required" 
+      error: "Missing required fields." 
     });
   }
 
-  let query, values;
+  // Use only the auto-increment ID, don't insert product_id
+  const query = "INSERT INTO products (product_name, price_new, brand, category, description, image_url, video_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
+  const values = [
+    product_name, 
+    parseFloat(price_new), 
+    brand,  
+    category, 
+    description, 
+    image_url, 
+    video_url
+  ];
 
-  if (productId) {
-    query = "INSERT INTO products (product_id, product_name, price_new, brand, category, description, image_url, video_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-    values = [productId, product_name, price_new, brand, category, description, image_url, video_url];
-  } else {
-    query = "INSERT INTO products (product_name, price_new, brand, category, description, image_url, video_url) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    values = [product_name, price_new, brand, category, description, image_url, video_url];
-  }
+  console.log("🛠️ Executing query with values:", values);
 
   db.query(query, values, (err, results) => {
     if (err) {
-      return res.status(500).json({ success: false, error: err.message });
+      console.error("❌ Database Error:", err.message);
+      return res.status(500).json({ 
+        success: false, 
+        error: "Database error: " + err.message 
+      });
     }
     
-    const insertedId = productId || results.insertId;
-    
+    console.log("✅ Product created successfully, ID:", results.insertId);
     res.status(201).json({ 
       success: true, 
       message: "Product created successfully",
-      productId: insertedId
+      productId: results.insertId  // This is the auto-generated ID
     });
   });
 });
-
 // UPDATE PRODUCT
+// UPDATE PRODUCT - FIXED VERSION
 router.put("/products/:id", (req, res) => {
-  const productId = req.params.id;
-  const { product_name, price_new, brand, category, description, image_url, video_url } = req.body;
+  const productId = req.params.id; // This is the auto-increment ID
+  const { product_name, price_new, brand, category, description = '', image_url = '', video_url = '' } = req.body;
   
-  const checkQuery = "SELECT * FROM products WHERE product_id = ?";
+  // Use 'id' instead of 'product_id'
+  const checkQuery = "SELECT * FROM products WHERE id = ?";
   
   db.query(checkQuery, [productId], (err, results) => {
     if (err) {
@@ -88,10 +116,10 @@ router.put("/products/:id", (req, res) => {
     const updateQuery = `
       UPDATE products 
       SET product_name = ?, price_new = ?, brand = ?, category = ?, description = ?, image_url = ?, video_url = ?
-      WHERE product_id = ?
+      WHERE id = ?
     `;
     
-    db.query(updateQuery, [product_name, price_new, brand, category, description, image_url, video_url, productId], (err, results) => {
+    db.query(updateQuery, [product_name, parseFloat(price_new), brand, category, description, image_url, video_url, productId], (err, results) => {
       if (err) {
         return res.status(500).json({ success: false, error: err.message });
       }
@@ -100,6 +128,37 @@ router.put("/products/:id", (req, res) => {
         success: true, 
         message: "Product updated successfully" 
       });
+    });
+  });
+});
+
+// DELETE PRODUCT - FIXED VERSION
+router.delete("/products/:id", (req, res) => {
+  const productId = req.params.id; // This is the auto-increment ID
+  
+  // Use 'id' instead of 'product_id'
+  const checkQuery = "SELECT * FROM products WHERE id = ?";
+  
+  db.query(checkQuery, [productId], (err, results) => {
+    if (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+    
+    if (results.length === 0) {
+      return res.status(404).json({ success: false, error: "Product not found" });
+    }
+    
+    const deleteQuery = "DELETE FROM products WHERE id = ?";
+    
+    db.query(deleteQuery, [productId], (err, results) => {
+      if (err) {
+        return res.status(500).json({ success: false, error: err.message });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: "Product deleted successfully" 
+      }); 
     });
   });
 });
@@ -134,4 +193,4 @@ router.delete("/products/:id", (req, res) => {
   });
 });
 
-export default router;
+export default router; 
