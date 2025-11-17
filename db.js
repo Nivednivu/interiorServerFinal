@@ -1,46 +1,65 @@
-
 import mysql from "mysql2";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Use connection pool instead of single connection
+// Use connection pool with reduced limit for Clever Cloud free tier
 const db = mysql.createPool({
-  host: process.env.DB_HOST || "bbbirijzpkb7zpmefw7b-mysql.services.clever-cloud.com",
-  user: process.env.DB_USER || "uvfmrzrkqmoxdzws",
-  password: process.env.DB_PASSWORD || "b3QNIwwmTJOkvgc63tGy", // You're using username as password!
-  database: process.env.DB_NAME || "bbbirijzpkb7zpmefw7b",
-  port: process.env.DB_PORT || 3306,
-  ssl: { rejectUnauthorized: false }, // Required for Clever Cloud
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-  acquireTimeout: 60000, 
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT,
+  ssl: { rejectUnauthorized: false },
+  
+  // REDUCED FOR CLEVER CLOUD FREE TIER
+  connectionLimit: 3, // Changed from 10 to 3
+  acquireTimeout: 10000,
   timeout: 60000,
-  reconnect: true
+  queueLimit: 0,
+  waitForConnections: true,
+  
+  // Better connection management
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 });
 
-// Test connection
+// Test connection with immediate release
 db.getConnection((err, connection) => {
   if (err) {
     console.error("❌ Clever Cloud MySQL Connection Failed:", err.message);
-    console.log("🔧 Troubleshooting Tips:");
-    console.log("1. Check if password is correct (not using username as password)");
-    console.log("2. Verify database name and host");
-    console.log("3. Check if IP is whitelisted in Clever Cloud");
-    console.log("4. Ensure SSL is enabled");
+    
+    if (err.message.includes('max_user_connections')) {
+      console.log("💡 Max connections reached. Waiting 30 seconds...");
+      setTimeout(() => {
+        console.log("🔄 Retrying database connection...");
+        db.getConnection((retryErr, retryConnection) => {
+          if (retryErr) {
+            console.error("❌ Retry failed:", retryErr.message);
+          } else {
+            console.log("✅ Connected after retry");
+            retryConnection.release();
+          }
+        });
+      }, 30000);
+    }
   } else {
     console.log("✅ Connected to Clever Cloud MySQL Database");
     console.log("📊 Database:", connection.config.database);
-    connection.release();
+    connection.release(); // IMPORTANT: Release immediately
   }
 });
 
-// Handle connection errors
-db.on('error', (err) => {
-  console.error('Database pool error:', err);
-  if (err.code === 'PROTOCOL_CONNECTION_LOST') {
-    console.log('Database connection was closed.');
-  }
+// Handle connection events
+db.on('acquire', (connection) => {
+  console.log('🔗 Connection acquired');
+});
+
+db.on('release', (connection) => {
+  console.log('🔓 Connection released');
+});
+
+db.on('error', (err) => {  
+  console.error('❌ Database pool error:', err.message);
 });
 
 export default db;
