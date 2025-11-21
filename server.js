@@ -24,8 +24,19 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static files from uploads directory - FIXED FOR RENDER
-app.use("/uploads", express.static(uploadsDir));
+// Serve static files from uploads directory - IMPROVED VERSION
+app.use("/uploads", express.static(uploadsDir, {
+  setHeaders: (res, path) => {
+    // Set proper CORS headers for files
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
 
+// Add CORS for all routes
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://your-react-app.onrender.com'],
+  credentials: true
+}));
 // Logging middleware
 app.use((req, res, next) => {
   console.log(`📨 ${req.method} ${req.path}`);
